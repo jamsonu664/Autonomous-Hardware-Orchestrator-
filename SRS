@@ -1,0 +1,162 @@
+1.  Introduction  
+The following subsections of the Software Requirements Specifications (SRS) document provide an overview of the entire SRS. This document explicitly defines what the system must do so that designers can ultimately build it. 
+1.1  Purpose  
+This subsection describes the purpose of the particular SRS and specifies the intended audience. The purpose of this document is to define the functional and non-functional requirements for "Project Aether," a predictive, AI-driven hardware orchestrator. The intended audience includes the FYP supervisory committee, external university examiners, and the core development team. 
+1.2  Scope 
+Identify the software product: Project Aether.
+What the software product will and will not do: The system will autonomously monitor hardware telemetry and use a Reinforcement Learning (RL) agent to adjust OS power plans and process affinities. It will not modify internal BIOS settings, flash firmware, or apply hardware-level overclocks.
+Application and Objectives: The primary goal is to maximize foreground 3D application performance and mitigate thermal throttling without manual user intervention.
+
+1.3  Definitions, Acronyms, and Abbreviations.  
+This section provides the definitions of all terms, acronyms, and abbreviations required to properly interpret the SRS. 
+RL (Reinforcement Learning): An AI paradigm where an agent learns to take actions to maximize a cumulative reward.
+WMI (Windows Management Instrumentation): The infrastructure for management data and operations on Windows OS.
+HAL (Hardware Abstraction Layer): A logical layer concealing physical hardware details from software.
+Telemetry: The automatic recording of data from motherboard and processor sensors.
+
+1.4  References  
+This subsection provides a complete list of documents referenced.
+1.	(1) IEEE Std 830-1998, IEEE Recommended Practice for Software Requirements Specifications.
+2.	(2) Python 3.10+ Official Documentation.
+3.	(3) Microsoft Win32 API and WMI Process Management Guidelines.
+
+
+1.5  Overview  
+This subsection explains how the rest of the SRS contains and is organized. Section 2 is intended for customers and potential users to understand the product context, while Section 3 contains the detailed specifications written for developers.
+
+
+2.  The Overall Description  
+This section describes the general factors that affect the product and its requirements. It provides a background for the requirements defined in Section 3, making them easier to understand. 
+2.1  Product Perspective  
+Project Aether is independent and totally self-contained. It functions as a black box utility sitting between the active software applications and the host operating system's resource scheduler.
+
+2.1.1 Operations
+The software operates inside specific constraints.
+1.	Normal Operations: The system operates in a passive, unattended mode in the system tray, consuming minimal CPU cycles to monitor baseline temperatures.
+2.	Special Operations: An active orchestration mode triggers during the launch of heavy computational applications, shifting resource priorities.
+
+2.1.2 Site Adaptation Requirements
+The requirements for initialization sequences specific to a given site include the presence of a Windows 10/11 environment. Modern motherboard ACPI drivers must be installed prior to software activation to ensure valid telemetry polling. 
+2.2  Product Functions 
+This is a summary of the major functions that the software will perform.
+1.	Real-Time Telemetry Acquisition: Granular tracking of CPU/GPU utilization and thermal states.
+2.	Predictive Thermal Throttling Guard: Predicting heat-induced lag spikes prior to occurrence.
+3.	Agentic Process Management: Algorithmic suppression of non-critical background processes.
+
+2.3  User Characteristics 
+This section describes the general characteristics of the intended users. The user base consists of PC gamers, developers, and power users who are comfortable with technology, which will drive a UI design that includes advanced data visualization.
+
+2.4  General Constraints  
+These are items that will limit the developer's options.
+1.	Hardware limitations: The application must remain under 1.5% CPU utilization to prevent overhead.
+2.	Control functions: Requires UAC Administrative privileges to modify process threads.
+3.	Higher-order language requirements: Must be written entirely in Python 3.10+
+
+2.5  Assumptions and Dependencies
+These are factors that affect the requirements stated in the SRS. A primary assumption is that a specific operating system (64-bit Windows) will be available on the hardware designated for the software product. 
+3.  Specific Requirements  
+This is the largest and most important section, giving the D-requirements that guide the project's software design, implementation, and testing 
+
+
+3.1  External Interface Requirements
+3.1.1 System Interfaces
+The system is self-contained and has no external corporate system interfaces requiring an API at this time 
+3.1.2 Interfaces
+This is a description of how the system will interact with its users. The system utilizes a GUI developed with CustomTkinter, providing real-time data visualization charts and toggle switches for performance profiles. 
+3.1.3 Hardware Interfaces
+This section specifies the logical characteristics between the software product and the hardware components. The system interfaces with CPU and GPU thermal registers and motherboard ACPI fans to read raw data arrays . 
+3.1.4 Software Interfaces
+This section specifies the use of other required software products.
+1.	Name: Windows Management Instrumentation (WMI).
+2.	Discussion: The system relies on WMI to fetch deep system metrics and execute OS-level process state manipulations.
+3.	Other Libraries: Utilizes Python packages psutil, GPUtil, and Stable-Baselines3.
+
+3.1.5 Communications Interfaces
+The system has no local network protocol or communications interface requirements. 
+
+3.2  Functional Requirements
+3.2.1 Data Acquisition Engine 
+3.2.1.1 Introduction: Gathers raw hardware data via sensor polling. 
+3.2.1.2 Inputs: Raw integer arrays from CPU/GPU sensors.
+3.2.1.3 Processing: Applies moving average filters to eliminate noise and mathematically normalizes data to a 0.0 - 1.0 scale.
+3.2.1.4 Outputs: A structured Python dictionary sent to the AI Brain at 1000ms intervals. 
+3.2.1.5 Error Handling: Falls back to the last known valid state vector if a sensor query timeouts.
+
+
+3.2.2 AI Optimization Brain
+
+3.2.2.1 Introduction: The core Reinforcement Learning decision module 
+3.2.2.2 Inputs: The normalized state vector and target FPS constraint. 
+3.2.2.3 Processing: A pre-trained PPO model evaluates the state to maximize rewards (high FPS, low thermals). 
+3.2.2.4 Outputs: An action integer (e.g., Action 1: Change Power Plan).  
+3.2.2.5 Error Handling: Defaults to native Windows scheduling if the AI confidence score drops. 
+
+3.3  Use Cases
+ 
+
+3.3.1 Use Case #1: Autonomous Game Optimization 
+Upon detecting a heavy 3D executable, the system shifts into active mode, prioritizes the target .exe, and suppresses background sync tasks automatically. 
+
+Field	Description
+Use Case Name	Autonomous Game Optimization
+Actor	System (Autonomous), Windows OS
+Description	The system shifts into active orchestration mode upon detecting a heavy 3D application to prioritize performance.
+Pre-conditions	Project Aether is running in the system tray; Windows 10/11 environment is active.
+Post-conditions	Foreground process priority is increased; background sync tasks are suppressed.
+Main Flow	1. System monitors active process list via WMI.
+2. Heavy 3D executable is detected.
+3. AI Brain evaluates current hardware state.
+4. System shifts resource priorities and suppresses background tasks.
+Alternative Flow	If AI confidence is low, the system defaults to native Windows scheduling.
+
+3.3.2 Use Case #2: Predictive Thermal Mitigation 
+The AI detects an upward velocity in hardware temperature. It predicts a throttle event in 15 seconds and preemptively lowers the CPU max power state to stabilize thermals. 
+3.4  Classes / Objects
+ 
+
+3.4.1 HardwareMonitor 
+3.4.1.1 Attributes: cpu_utilization_history, gpu_thermal_state, polling_interval_ms. 
+3.4.1.2 Functions: poll_sensors(), normalize_data() 
+3.4.2 AI Brain 
+3.4.2.1 Attributes: model_weights_path, current_policy 
+3.4.2.2 Functions: evaluate_state(), calculate_reward(). 
+
+
+
+3.5  Non-Functional Requirements
+State the requirements in measurable terms 
+3.5.1 Performance: The complete monitoring and execution loop shall be processed in less than 50ms. CPU overhead must not exceed 1.5%. 
+3.5.2 Reliability: The system requires a "Dead Man's Switch" daemon to instantly restore Windows default settings if the main process crashes. 
+3.5.3 Security: Telemetry data must be securely stored locally in encrypted files. Zero external network transmission is permitted. 
+3.5.4 Portability: The Hardware Abstraction Layer must allow the software to function across varying AMD and Intel processor architectures without code modification
+3.7  Logical Database Requirements 
+The system utilizes a local SQLite3 database. It requires two tables: telemetry_logs (tracking historical hardware states) and game_profiles (tracking user-defined target thresholds for specific executables). 
+3.8  Design Constraints 
+3.8.1 Standards Compliance 
+All Python code must strictly comply with PEP-8 formatting standards and modular Object-Oriented Programming (OOP) paradigms. 
+
+
+
+
+
+
+
+
+
+
+
+
+4. References
+This section provides a complete bibliography of the technical standards, academic research, and software documentation utilized in the development and specification of Project Aether.
+1.	IEEE Computer Society, "IEEE Std 830-1998, IEEE Recommended Practice for Software Requirements Specifications," Oct. 1998.
+2.	Schulman, J., Wolski, F., Dhariwal, P., Radford, A., & Klimov, O., "Proximal Policy Optimization Algorithms," arXiv preprint arXiv:1707.06347, 2017.
+3.	Python Software Foundation, "Python 3.10 Documentation: The Python Standard Library," [Online]. Available: https://docs.python.org/3.10/.
+4.	Microsoft Corporation, "Windows Management Instrumentation (WMI) and Win32 API Process Management Guidelines," Microsoft Learn Documentation.
+5.	Raffin, A., Hill, A., Gleave, A., Kanervisto, A., Ernestus, M., & Dormann, N., "Stable-Baselines3: Reliable Reinforcement Learning Implementations," Journal of Machine Learning Research, 2021.
+6.	Van Rossum, G., Warsaw, B., & Coghlan, N., "PEP 8 – Style Guide for Python Code," 2001.
+7.	Giampaoli, T., "CustomTkinter: A Modern Interface Library for Python," [Online]. Available: https://github.com/TomSchimansky/CustomTkinter.
+8.	Hipp, R. D., "SQLite3 Database Engine: SQL Database Engine Implementation," [Online]. Available: https://www.sqlite.org/.
+
+
+
+.0 | The Islamia University of Bahawalpur
